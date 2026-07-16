@@ -1,7 +1,11 @@
 # LCD_DotMatrix (Nuke gizmo)
 
-Turns whatever comes into the node into a 48x48 grid of round dots, like a
-segmented LCD / dot-matrix display. Works two ways:
+Turns whatever comes into the node into a 48x48 grid of small, clearly
+separated round LEDs — the classic red dot-matrix sign / Tamagotchi look,
+not a flat pixelated mosaic. By default it's monochrome: each of the 2304
+cells samples the source image's brightness and is either a lit red dot
+(with a soft glow, like a real LED) or a dim unlit dot, against a black
+background, with visible gaps between dots. Works two ways:
 
 - **Image input**: connect any Read/upstream node into it as normal.
 - **Paint input**: leave it unconnected (or connect nothing you care about)
@@ -24,8 +28,11 @@ The gizmo (`Gizmos/LCD_DotMatrix.gizmo`) is a `Group` containing:
    resolution with nearest-neighbour sampling (no new detail, just bigger
    flat blocks — one per cell).
 4. `LCD_Kernel` — a `BlinkScript` node that turns each flat block into a
-   round (or soft-edged) dot against a background colour, optionally in a
-   two-colour "classic LCD" monochrome mode driven by a luma threshold.
+   small round dot with a soft glow halo (like a real LED) against a
+   background colour, sized well inside its cell so neighbouring dots
+   don't touch. Defaults to a two-colour "classic LCD" monochrome mode
+   (bright red on/dim red off) driven by a luma threshold; full-colour
+   mode (each dot keeps the source's own sampled colour) is a toggle away.
 
 Grid Size and Pixels per Dot (exposed on the gizmo) drive both Reformat
 nodes and the kernel together, so the render always ends up at
@@ -38,13 +45,14 @@ nodes and the kernel together, so the render always ends up at
 |---|---|
 | Grid Size (dots) | Dots across/down. Defaults to 48x48 per spec. |
 | Pixels per Dot | Output resolution of each dot cell. |
-| Dot Size | Radius of each dot within its cell (0 = pinprick, 0.5 = touching neighbours). |
-| Edge Softness | Anti-aliasing falloff on the dot edge. |
-| Monochrome | Switches to a 2-colour on/off LCD look. |
+| Dot Size | Radius of each dot within its cell (0 = pinprick, 0.5 = touching neighbours). Defaults small (0.30) so dots read as separate LEDs, not a solid mosaic. |
+| Edge Softness | Anti-aliasing falloff on the dot's hard edge. |
+| Glow | Soft halo bleeding outward from each lit dot, like a real LED bloom. |
+| Monochrome | On by default — 2-colour on/off LED look. Turn off for each dot to keep the source's own sampled colour. |
 | Threshold | Luma cutoff used to decide "on" vs "off" in monochrome mode. |
 | Invert | Flips on/off in monochrome mode. |
-| On Colour / Off Colour | Colours used in monochrome mode. |
-| Background (colour mode) | Background shown around each dot when *not* in monochrome mode. |
+| On Colour / Off Colour | Lit/unlit dot colours in monochrome mode. Defaults to bright red / dim red for the classic LED-sign look. |
+| Background (colour mode) | Background shown around each dot when monochrome is *off*. |
 
 ## Install
 

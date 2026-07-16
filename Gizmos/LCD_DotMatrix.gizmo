@@ -13,6 +13,7 @@ Group {
  addUserKnob {26 div1 l "" +STARTLINE}
  addUserKnob {41 dot_radius l "Dot Size" T LCD_Kernel.dotRadius}
  addUserKnob {41 edge_softness l "Edge Softness" T LCD_Kernel.edgeSoftness}
+ addUserKnob {41 glow l "Glow" T LCD_Kernel.glow}
  addUserKnob {26 div2 l "" +STARTLINE}
  addUserKnob {41 monochrome l "Monochrome (classic LCD)" T LCD_Kernel.monochrome}
  addUserKnob {41 threshold l "Threshold" T LCD_Kernel.threshold}
@@ -61,7 +62,75 @@ Group {
   ypos -40
  }
  BlinkScript {
-  kernelSource "kernel LCDDotMatrixKernel : ImageComputationKernel<ePixelWise>\n\{\n  Image<eRead, eAccessPoint, eEdgeClamped> src;\n  Image<eWrite> dst;\n\n  param:\n    int dotPixelSize;\n    float dotRadius;\n    float edgeSoftness;\n    float4 offColor;\n    bool monochrome;\n    float4 onColorMono;\n    float4 offColorMono;\n    float threshold;\n    bool invert;\n\n  local:\n    float _cellF;\n\n  void define() \{\n    defineParam(dotPixelSize, \"dotPixelSize\", 10);\n    defineParam(dotRadius, \"dotRadius\", 0.42f);\n    defineParam(edgeSoftness, \"edgeSoftness\", 0.06f);\n    defineParam(offColor, \"offColor\", float4(0.0f, 0.0f, 0.0f, 1.0f));\n    defineParam(monochrome, \"monochrome\", false);\n    defineParam(onColorMono, \"onColorMono\", float4(0.15f, 0.85f, 0.35f, 1.0f));\n    defineParam(offColorMono, \"offColorMono\", float4(0.03f, 0.05f, 0.03f, 1.0f));\n    defineParam(threshold, \"threshold\", 0.5f);\n    defineParam(invert, \"invert\", false);\n  \}\n\n  void init() \{\n    _cellF = (float)max(dotPixelSize, 1);\n  \}\n\n  void process(int2 pos) \{\n    int cx = pos.x % dotPixelSize;\n    int cy = pos.y % dotPixelSize;\n    float localX = ((float)cx + 0.5f) / _cellF - 0.5f;\n    float localY = ((float)cy + 0.5f) / _cellF - 0.5f;\n    float dist = sqrt(localX * localX + localY * localY);\n    float edge = 1.0f - smoothstep(dotRadius - edgeSoftness, dotRadius, dist);\n\n    float4 cellColor = src();\n    float4 dotColor = cellColor;\n    float4 bgColor = offColor;\n\n    if (monochrome) \{\n      float luma = 0.2126f * cellColor.x + 0.7152f * cellColor.y + 0.0722f * cellColor.z;\n      bool on = luma >= threshold;\n      if (invert) \{\n        on = !on;\n      \}\n      dotColor = on ? onColorMono : offColorMono;\n      bgColor = offColorMono;\n    \}\n\n    dst() = bgColor + (dotColor - bgColor) * edge;\n  \}\n\};\n"
+  kernelSource "kernel LCDDotMatrixKernel : ImageComputationKernel<ePixelWise>
+\{
+  Image<eRead, eAccessPoint, eEdgeClamped> src;
+  Image<eWrite> dst;
+
+  param:
+    int dotPixelSize;
+    float dotRadius;
+    float edgeSoftness;
+    float glow;
+    float4 offColor;
+    bool monochrome;
+    float4 onColorMono;
+    float4 offColorMono;
+    float threshold;
+    bool invert;
+
+  local:
+    float _cellF;
+
+  void define() \{
+    defineParam(dotPixelSize, \"dotPixelSize\", 10);
+    defineParam(dotRadius, \"dotRadius\", 0.30f);
+    defineParam(edgeSoftness, \"edgeSoftness\", 0.035f);
+    defineParam(glow, \"glow\", 0.35f);
+    defineParam(offColor, \"offColor\", float4(0.0f, 0.0f, 0.0f, 1.0f));
+    defineParam(monochrome, \"monochrome\", true);
+    defineParam(onColorMono, \"onColorMono\", float4(1.0f, 0.05f, 0.02f, 1.0f));
+    defineParam(offColorMono, \"offColorMono\", float4(0.05f, 0.005f, 0.005f, 1.0f));
+    defineParam(threshold, \"threshold\", 0.5f);
+    defineParam(invert, \"invert\", false);
+  \}
+
+  void init() \{
+    _cellF = (float)max(dotPixelSize, 1);
+  \}
+
+  void process(int2 pos) \{
+    int cx = pos.x % dotPixelSize;
+    int cy = pos.y % dotPixelSize;
+    float localX = ((float)cx + 0.5f) / _cellF - 0.5f;
+    float localY = ((float)cy + 0.5f) / _cellF - 0.5f;
+    float dist = sqrt(localX * localX + localY * localY);
+
+    float core = 1.0f - smoothstep(dotRadius - edgeSoftness, dotRadius, dist);
+    float halo = 0.0f;
+    if (glow > 0.0f) \{
+      halo = (1.0f - smoothstep(dotRadius, dotRadius + 0.16f, dist)) * glow;
+    \}
+    float total = max(core, halo);
+
+    float4 cellColor = src();
+    float4 dotColor = cellColor;
+    float4 bgColor = offColor;
+
+    if (monochrome) \{
+      float luma = 0.2126f * cellColor.x + 0.7152f * cellColor.y + 0.0722f * cellColor.z;
+      bool on = luma >= threshold;
+      if (invert) \{
+        on = !on;
+      \}
+      dotColor = on ? onColorMono : offColorMono;
+      bgColor = offColorMono;
+    \}
+
+    dst() = bgColor + (dotColor - bgColor) * total;
+  \}
+\};
+"
   name LCD_Kernel
   xpos 0
   ypos 0
