@@ -1,0 +1,83 @@
+#! /Applications/Nuke/Nuke.app/Contents/MacOS/Nuke -nx
+version 13.0 v1
+Group {
+ name LCD_DotMatrix
+ help "Converts the incoming image into a 48x48 dot-matrix / LCD-style grid.\nFeed an image into the input, OR leave it unconnected and open the\ninternal 'Paint' node (button below) to paint directly - either way\nthe result is quantized down to a grid of round dots.\n\nGrid Size sets how many dots across/down (default 48x48).\nPixels per Dot sets the on-screen resolution of each dot.\nDot Size / Edge Softness shape the dots themselves.\nMonochrome mode gives a classic 2-colour LCD look driven by a\nluma Threshold; otherwise each dot keeps the source's own colour."
+ tile_color 0x334455ff
+ addUserKnob {20 User l "LCD Dot Matrix"}
+ addUserKnob {22 open_paint l "Open Paint Panel" -STARTLINE T "n = nuke.thisNode()\np = n.node('Paint')\nif p is not None:\n    p.showControlPanel()\n"}
+ addUserKnob {3 grid_size l "Grid Size (dots)" t "Number of dots across and down. The tool always builds a square grid."}
+ grid_size 48
+ addUserKnob {3 dot_pixel_size l "Pixels per Dot" t "Output resolution of each dot cell, in pixels. Final render size = grid_size * dot_pixel_size."}
+ dot_pixel_size 10
+ addUserKnob {26 div1 l "" +STARTLINE}
+ addUserKnob {41 dot_radius l "Dot Size" T LCD_Kernel.dotRadius}
+ addUserKnob {41 edge_softness l "Edge Softness" T LCD_Kernel.edgeSoftness}
+ addUserKnob {26 div2 l "" +STARTLINE}
+ addUserKnob {41 monochrome l "Monochrome (classic LCD)" T LCD_Kernel.monochrome}
+ addUserKnob {41 threshold l "Threshold" T LCD_Kernel.threshold}
+ addUserKnob {41 invert l "Invert" T LCD_Kernel.invert}
+ addUserKnob {41 on_color_mono l "On Colour" T LCD_Kernel.onColorMono}
+ addUserKnob {41 off_color_mono l "Off Colour" T LCD_Kernel.offColorMono}
+ addUserKnob {26 div3 l "" +STARTLINE}
+ addUserKnob {41 off_color l "Background (colour mode)" T LCD_Kernel.offColor}
+ knobChanged "\nnode = nuke.thisNode()\nknob = nuke.thisKnob()\nif knob.name() in ('grid_size', 'dot_pixel_size', 'inputChange', 'showPanel'):\n    g = max(1, int(node['grid_size'].value()))\n    p = max(1, int(node['dot_pixel_size'].value()))\n    full = g * p\n    grid_name = 'LCD_grid_%dx%d' % (g, g)\n    full_name = 'LCD_full_%dx%d' % (full, full)\n    have_grid = any(f.name() == grid_name for f in nuke.formats())\n    have_full = any(f.name() == full_name for f in nuke.formats())\n    if not have_grid:\n        nuke.addFormat('%d %d %s' % (g, g, grid_name))\n    if not have_full:\n        nuke.addFormat('%d %d %s' % (full, full, full_name))\n    node.node('Pixelate')\['format'\].setValue(grid_name)\n    node.node('Upscale')\['format'\].setValue(full_name)\n    node.node('LCD_Kernel')\['dotPixelSize'\].setValue(p)\n"
+ addUserKnob {20 endGroup n -1}
+}
+ Input {
+  inputs 0
+  name Input1
+  xpos 0
+  ypos -160
+ }
+ RotoPaint {
+  inputs 1
+  name Paint
+  label "paint here, or just pass an image through"
+  xpos 0
+  ypos -120
+ }
+ Reformat {
+  type "to format"
+  format "48 48 0 0 48 48 1 LCD_grid_48x48"
+  resize fill
+  filter Area
+  center true
+  name Pixelate
+  label "average down to the dot grid"
+  xpos 0
+  ypos -80
+ }
+ Reformat {
+  type "to format"
+  format "480 480 0 0 480 480 1 LCD_full_480x480"
+  resize distort
+  filter Impulse
+  center true
+  name Upscale
+  label "nearest-neighbour blow-up (1 block per dot)"
+  xpos 0
+  ypos -40
+ }
+ BlinkScript {
+  kernelSource "kernel LCDDotMatrixKernel : ImageComputationKernel<ePixelWise>\n\{\n  Image<eRead, eAccessPoint, eEdgeClamped> src;\n  Image<eWrite> dst;\n\n  param:\n    int dotPixelSize;\n    float dotRadius;\n    float edgeSoftness;\n    float4 offColor;\n    bool monochrome;\n    float4 onColorMono;\n    float4 offColorMono;\n    float threshold;\n    bool invert;\n\n  local:\n    float _cellF;\n\n  void define() \{\n    defineParam(dotPixelSize, \"dotPixelSize\", 10);\n    defineParam(dotRadius, \"dotRadius\", 0.42f);\n    defineParam(edgeSoftness, \"edgeSoftness\", 0.06f);\n    defineParam(offColor, \"offColor\", float4(0.0f, 0.0f, 0.0f, 1.0f));\n    defineParam(monochrome, \"monochrome\", false);\n    defineParam(onColorMono, \"onColorMono\", float4(0.15f, 0.85f, 0.35f, 1.0f));\n    defineParam(offColorMono, \"offColorMono\", float4(0.03f, 0.05f, 0.03f, 1.0f));\n    defineParam(threshold, \"threshold\", 0.5f);\n    defineParam(invert, \"invert\", false);\n  \}\n\n  void init() \{\n    _cellF = (float)max(dotPixelSize, 1);\n  \}\n\n  void process(int2 pos) \{\n    int cx = pos.x % dotPixelSize;\n    int cy = pos.y % dotPixelSize;\n    float localX = ((float)cx + 0.5f) / _cellF - 0.5f;\n    float localY = ((float)cy + 0.5f) / _cellF - 0.5f;\n    float dist = sqrt(localX * localX + localY * localY);\n    float edge = 1.0f - smoothstep(dotRadius - edgeSoftness, dotRadius, dist);\n\n    float4 cellColor = src();\n    float4 dotColor = cellColor;\n    float4 bgColor = offColor;\n\n    if (monochrome) \{\n      float luma = 0.2126f * cellColor.x + 0.7152f * cellColor.y + 0.0722f * cellColor.z;\n      bool on = luma >= threshold;\n      if (invert) \{\n        on = !on;\n      \}\n      dotColor = on ? onColorMono : offColorMono;\n      bgColor = offColorMono;\n    \}\n\n    dst() = bgColor + (dotColor - bgColor) * edge;\n  \}\n\};\n"
+  name LCD_Kernel
+  label "\[value dotPixelSize\]px dots"
+  dotPixelSize 10
+  dotRadius 0.42
+  edgeSoftness 0.06
+  offColor {0 0 0 1}
+  monochrome false
+  onColorMono {0.15 0.85 0.35 1}
+  offColorMono {0.03 0.05 0.03 1}
+  threshold 0.5
+  invert false
+  xpos 0
+  ypos 0
+ }
+ Output {
+  name Output1
+  xpos 0
+  ypos 40
+ }
+end_group
