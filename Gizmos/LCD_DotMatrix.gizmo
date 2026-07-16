@@ -86,8 +86,8 @@ Group {
   void define() \{
     defineParam(dotPixelSize, \"dotPixelSize\", 10);
     defineParam(dotRadius, \"dotRadius\", 0.30f);
-    defineParam(edgeSoftness, \"edgeSoftness\", 0.035f);
-    defineParam(glow, \"glow\", 0.35f);
+    defineParam(edgeSoftness, \"edgeSoftness\", 0.015f);
+    defineParam(glow, \"glow\", 0.0f);
     defineParam(offColor, \"offColor\", float4(0.0f, 0.0f, 0.0f, 1.0f));
     defineParam(monochrome, \"monochrome\", false);
     defineParam(onColorMono, \"onColorMono\", float4(1.0f, 0.05f, 0.02f, 1.0f));
