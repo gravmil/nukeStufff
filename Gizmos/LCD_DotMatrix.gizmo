@@ -89,7 +89,7 @@ Group {
     defineParam(edgeSoftness, \"edgeSoftness\", 0.035f);
     defineParam(glow, \"glow\", 0.35f);
     defineParam(offColor, \"offColor\", float4(0.0f, 0.0f, 0.0f, 1.0f));
-    defineParam(monochrome, \"monochrome\", true);
+    defineParam(monochrome, \"monochrome\", false);
     defineParam(onColorMono, \"onColorMono\", float4(1.0f, 0.05f, 0.02f, 1.0f));
     defineParam(offColorMono, \"offColorMono\", float4(0.05f, 0.005f, 0.005f, 1.0f));
     defineParam(threshold, \"threshold\", 0.5f);
