@@ -63,12 +63,11 @@ plugin path at this repo. The gizmo will then show up under the
 `nuke.createNode('LCD_DotMatrix')`.
 
 Requires a Nuke build with BlinkScript (standard in commercial and
-non-commercial Nuke). The gizmo forces a recompile of the internal
-`LCD_Kernel` node on creation (via `onCreate`), so the dot parameters
-should be live immediately; if they aren't, select `LCD_Kernel` inside
-the group and hit **Recompile** manually.
-
-An earlier revision had a bad `filter` value on the `Pixelate` Reformat
-and premature BlinkScript knob assignments that aborted the whole gizmo
-load in a real Nuke session; both are fixed here, but if you hit further
-load errors, check the console output against the node/knob names above.
+non-commercial Nuke). BlinkScript only generates its parameter knobs
+(`dotRadius`, `monochrome`, etc.) after the kernel actually compiles,
+which doesn't happen automatically just from loading `kernelSource` off
+disk — so the gizmo calls `LCD_Kernel['recompile'].execute()` on
+creation (`onCreate`) to force it. If the dot controls on the gizmo
+still show "Missing knob" (e.g. on a Nuke version where `onCreate`
+doesn't fire for gizmo instances), click **Force Recompile** at the top
+of the gizmo's panel, then reopen the panel.

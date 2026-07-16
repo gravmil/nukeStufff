@@ -6,6 +6,7 @@ Group {
  tile_color 0x334455ff
  addUserKnob {20 User l "LCD Dot Matrix"}
  addUserKnob {22 open_paint l "Open Paint Panel" -STARTLINE T "n = nuke.thisNode()\np = n.node('Paint')\nif p is not None:\n    p.showControlPanel()\n"}
+ addUserKnob {22 force_recompile l "Force Recompile" -STARTLINE T "n = nuke.thisNode()\nk = n.node('LCD_Kernel')\nif k is not None:\n    k\['recompile'\].execute()\n    nuke.message('Recompiled. Reopen this panel if the dot controls are still missing.')\n"}
  addUserKnob {3 grid_size l "Grid Size (dots)" t "Number of dots across and down. The tool always builds a square grid."}
  grid_size 48
  addUserKnob {3 dot_pixel_size l "Pixels per Dot" t "Output resolution of each dot cell, in pixels. Final render size = grid_size * dot_pixel_size."}
@@ -22,8 +23,8 @@ Group {
  addUserKnob {41 off_color_mono l "Off Colour" T LCD_Kernel.offColorMono}
  addUserKnob {26 div3 l "" +STARTLINE}
  addUserKnob {41 off_color l "Background (colour mode)" T LCD_Kernel.offColor}
- onCreate "\nnode = nuke.thisNode()\nk = node.node('LCD_Kernel')\nif k is not None:\n    try:\n        k\['kernelSource'\].setValue(k\['kernelSource'\].value())\n    except Exception:\n        pass\n"
- knobChanged "\nnode = nuke.thisNode()\nknob = nuke.thisKnob()\nif knob.name() in ('grid_size', 'dot_pixel_size', 'inputChange', 'showPanel'):\n    g = max(1, int(node['grid_size'].value()))\n    p = max(1, int(node['dot_pixel_size'].value()))\n    full = g * p\n    grid_name = 'LCD_grid_%dx%d' % (g, g)\n    full_name = 'LCD_full_%dx%d' % (full, full)\n    have_grid = any(f.name() == grid_name for f in nuke.formats())\n    have_full = any(f.name() == full_name for f in nuke.formats())\n    if not have_grid:\n        nuke.addFormat('%d %d %s' % (g, g, grid_name))\n    if not have_full:\n        nuke.addFormat('%d %d %s' % (full, full, full_name))\n    node.node('Pixelate')\['format'\].setValue(grid_name)\n    node.node('Upscale')\['format'\].setValue(full_name)\n    k = node.node('LCD_Kernel')\n    if k is not None and 'dotPixelSize' in k.knobs():\n        k\['dotPixelSize'\].setValue(p)\n"
+ onCreate "\nnode = nuke.thisNode()\nk = node.node('LCD_Kernel')\nif k is not None:\n    try:\n        k\['recompile'\].execute()\n    except Exception:\n        pass\n"
+ knobChanged "\nnode = nuke.thisNode()\nknob = nuke.thisKnob()\nif knob.name() in ('grid_size', 'dot_pixel_size', 'inputChange', 'showPanel'):\n    g = max(1, int(node['grid_size'].value()))\n    p = max(1, int(node['dot_pixel_size'].value()))\n    full = g * p\n    grid_name = 'LCD_grid_%dx%d' % (g, g)\n    full_name = 'LCD_full_%dx%d' % (full, full)\n    have_grid = any(f.name() == grid_name for f in nuke.formats())\n    have_full = any(f.name() == full_name for f in nuke.formats())\n    if not have_grid:\n        nuke.addFormat('%d %d %s' % (g, g, grid_name))\n    if not have_full:\n        nuke.addFormat('%d %d %s' % (full, full, full_name))\n    node.node('Pixelate')\['format'\].setValue(grid_name)\n    node.node('Upscale')\['format'\].setValue(full_name)\n    k = node.node('LCD_Kernel')\n    if k is not None:\n        if 'dotPixelSize' not in k.knobs():\n            try:\n                k\['recompile'\].execute()\n            except Exception:\n                pass\n        if 'dotPixelSize' in k.knobs():\n            k\['dotPixelSize'\].setValue(p)\n"
  addUserKnob {20 endGroup n -1}
 }
  Input {
