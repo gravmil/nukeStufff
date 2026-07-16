@@ -21,7 +21,8 @@ Group {
  addUserKnob {41 off_color_mono l "Off Colour" T LCD_Kernel.offColorMono}
  addUserKnob {26 div3 l "" +STARTLINE}
  addUserKnob {41 off_color l "Background (colour mode)" T LCD_Kernel.offColor}
- knobChanged "\nnode = nuke.thisNode()\nknob = nuke.thisKnob()\nif knob.name() in ('grid_size', 'dot_pixel_size', 'inputChange', 'showPanel'):\n    g = max(1, int(node['grid_size'].value()))\n    p = max(1, int(node['dot_pixel_size'].value()))\n    full = g * p\n    grid_name = 'LCD_grid_%dx%d' % (g, g)\n    full_name = 'LCD_full_%dx%d' % (full, full)\n    have_grid = any(f.name() == grid_name for f in nuke.formats())\n    have_full = any(f.name() == full_name for f in nuke.formats())\n    if not have_grid:\n        nuke.addFormat('%d %d %s' % (g, g, grid_name))\n    if not have_full:\n        nuke.addFormat('%d %d %s' % (full, full, full_name))\n    node.node('Pixelate')\['format'\].setValue(grid_name)\n    node.node('Upscale')\['format'\].setValue(full_name)\n    node.node('LCD_Kernel')\['dotPixelSize'\].setValue(p)\n"
+ onCreate "\nnode = nuke.thisNode()\nk = node.node('LCD_Kernel')\nif k is not None:\n    try:\n        k\['kernelSource'\].setValue(k\['kernelSource'\].value())\n    except Exception:\n        pass\n"
+ knobChanged "\nnode = nuke.thisNode()\nknob = nuke.thisKnob()\nif knob.name() in ('grid_size', 'dot_pixel_size', 'inputChange', 'showPanel'):\n    g = max(1, int(node['grid_size'].value()))\n    p = max(1, int(node['dot_pixel_size'].value()))\n    full = g * p\n    grid_name = 'LCD_grid_%dx%d' % (g, g)\n    full_name = 'LCD_full_%dx%d' % (full, full)\n    have_grid = any(f.name() == grid_name for f in nuke.formats())\n    have_full = any(f.name() == full_name for f in nuke.formats())\n    if not have_grid:\n        nuke.addFormat('%d %d %s' % (g, g, grid_name))\n    if not have_full:\n        nuke.addFormat('%d %d %s' % (full, full, full_name))\n    node.node('Pixelate')\['format'\].setValue(grid_name)\n    node.node('Upscale')\['format'\].setValue(full_name)\n    k = node.node('LCD_Kernel')\n    if k is not None and 'dotPixelSize' in k.knobs():\n        k\['dotPixelSize'\].setValue(p)\n"
  addUserKnob {20 endGroup n -1}
 }
  Input {
@@ -41,7 +42,7 @@ Group {
   type "to format"
   format "48 48 0 0 48 48 1 LCD_grid_48x48"
   resize fill
-  filter Area
+  filter Cubic
   center true
   name Pixelate
   label "average down to the dot grid"
@@ -62,16 +63,6 @@ Group {
  BlinkScript {
   kernelSource "kernel LCDDotMatrixKernel : ImageComputationKernel<ePixelWise>\n\{\n  Image<eRead, eAccessPoint, eEdgeClamped> src;\n  Image<eWrite> dst;\n\n  param:\n    int dotPixelSize;\n    float dotRadius;\n    float edgeSoftness;\n    float4 offColor;\n    bool monochrome;\n    float4 onColorMono;\n    float4 offColorMono;\n    float threshold;\n    bool invert;\n\n  local:\n    float _cellF;\n\n  void define() \{\n    defineParam(dotPixelSize, \"dotPixelSize\", 10);\n    defineParam(dotRadius, \"dotRadius\", 0.42f);\n    defineParam(edgeSoftness, \"edgeSoftness\", 0.06f);\n    defineParam(offColor, \"offColor\", float4(0.0f, 0.0f, 0.0f, 1.0f));\n    defineParam(monochrome, \"monochrome\", false);\n    defineParam(onColorMono, \"onColorMono\", float4(0.15f, 0.85f, 0.35f, 1.0f));\n    defineParam(offColorMono, \"offColorMono\", float4(0.03f, 0.05f, 0.03f, 1.0f));\n    defineParam(threshold, \"threshold\", 0.5f);\n    defineParam(invert, \"invert\", false);\n  \}\n\n  void init() \{\n    _cellF = (float)max(dotPixelSize, 1);\n  \}\n\n  void process(int2 pos) \{\n    int cx = pos.x % dotPixelSize;\n    int cy = pos.y % dotPixelSize;\n    float localX = ((float)cx + 0.5f) / _cellF - 0.5f;\n    float localY = ((float)cy + 0.5f) / _cellF - 0.5f;\n    float dist = sqrt(localX * localX + localY * localY);\n    float edge = 1.0f - smoothstep(dotRadius - edgeSoftness, dotRadius, dist);\n\n    float4 cellColor = src();\n    float4 dotColor = cellColor;\n    float4 bgColor = offColor;\n\n    if (monochrome) \{\n      float luma = 0.2126f * cellColor.x + 0.7152f * cellColor.y + 0.0722f * cellColor.z;\n      bool on = luma >= threshold;\n      if (invert) \{\n        on = !on;\n      \}\n      dotColor = on ? onColorMono : offColorMono;\n      bgColor = offColorMono;\n    \}\n\n    dst() = bgColor + (dotColor - bgColor) * edge;\n  \}\n\};\n"
   name LCD_Kernel
-  label "\[value dotPixelSize\]px dots"
-  dotPixelSize 10
-  dotRadius 0.42
-  edgeSoftness 0.06
-  offColor {0 0 0 1}
-  monochrome false
-  onColorMono {0.15 0.85 0.35 1}
-  offColorMono {0.03 0.05 0.03 1}
-  threshold 0.5
-  invert false
   xpos 0
   ypos 0
  }
