@@ -100,6 +100,15 @@ Group {
     _cellF = (float)max(dotPixelSize, 1);
   \}
 
+  float smoothstepLocal(float edge0, float edge1, float x) \{
+    float denom = edge1 - edge0;
+    if (denom == 0.0f) \{
+      return (x < edge0) ? 0.0f : 1.0f;
+    \}
+    float t = clamp((x - edge0) / denom, 0.0f, 1.0f);
+    return t * t * (3.0f - 2.0f * t);
+  \}
+
   void process(int2 pos) \{
     int cx = pos.x % dotPixelSize;
     int cy = pos.y % dotPixelSize;
@@ -107,10 +116,10 @@ Group {
     float localY = ((float)cy + 0.5f) / _cellF - 0.5f;
     float dist = sqrt(localX * localX + localY * localY);
 
-    float core = 1.0f - smoothstep(dotRadius - edgeSoftness, dotRadius, dist);
+    float core = 1.0f - smoothstepLocal(dotRadius - edgeSoftness, dotRadius, dist);
     float halo = 0.0f;
     if (glow > 0.0f) \{
-      halo = (1.0f - smoothstep(dotRadius, dotRadius + 0.16f, dist)) * glow;
+      halo = (1.0f - smoothstepLocal(dotRadius, dotRadius + 0.16f, dist)) * glow;
     \}
     float total = max(core, halo);
 
