@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "normal2height"
+version = "1.0.0"
+description = "Batch, UDIM-aware normal-map to height-map (displacement) converter"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.23",
+    "scipy>=1.9",
+    "imageio>=2.31",
+    "tifffile>=2023.7.10",
+]
+
+[project.optional-dependencies]
+exr = ["OpenEXR>=3.2"]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+normal2height = "normal2height.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
