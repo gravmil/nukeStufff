@@ -1,0 +1,69 @@
+#! /Applications/Nuke/Nuke.app/Contents/MacOS/Nuke -nx
+version 13.0 v1
+Group {
+ name Remap_Range
+ help "Remaps the input range [Old Min, Old Max] onto the output range\n[New Min, New Max], then applies an overall Multiply (gain).\n\nPer channel:\n  normalized = (in - Old Min) / (Old Max - Old Min)\n  out        = (normalized * (New Max - New Min) + New Min) * Multiply\n\nRGB are remapped; alpha is passed through unchanged unless\n'Include alpha' is on. Turn on 'Clamp' to keep the result inside\n[New Min, New Max]. If Old Max == Old Min the normalized term falls\nback to 0 (no divide-by-zero)."
+ tile_color 0x445533ff
+ addUserKnob {20 User l Remap}
+ addUserKnob {7 multiply l Multiply t "Overall gain applied to the remapped result." R 0 4}
+ multiply 1
+ addUserKnob {26 div1 l "" +STARTLINE}
+ addUserKnob {7 old_min l "Old Min" t "Input value that maps to New Min." R -1 1}
+ addUserKnob {7 old_max l "Old Max" t "Input value that maps to New Max." R -1 1}
+ old_max 1
+ addUserKnob {26 div2 l "" +STARTLINE}
+ addUserKnob {7 new_min l "New Min" t "Output value that Old Min maps to." R -1 1}
+ addUserKnob {7 new_max l "New Max" t "Output value that Old Max maps to." R -1 1}
+ new_max 1
+ addUserKnob {26 div3 l "" +STARTLINE}
+ addUserKnob {6 include_alpha l "Include alpha" t "Also remap the alpha channel. Off = alpha passes through untouched." +STARTLINE}
+ addUserKnob {6 do_clamp l "Clamp to New range" t "Clamp the output to [New Min, New Max]." +STARTLINE}
+ addUserKnob {20 endGroup n -1}
+}
+ Input {
+  inputs 0
+  name Input1
+  xpos 0
+  ypos -120
+ }
+ Expression {
+  temp_name0 den
+  temp_expr0 "parent.old_max - parent.old_min"
+  expr0 "((den == 0 ? 0 : (r - parent.old_min) / den) * (parent.new_max - parent.new_min) + parent.new_min) * parent.multiply"
+  expr1 "((den == 0 ? 0 : (g - parent.old_min) / den) * (parent.new_max - parent.new_min) + parent.new_min) * parent.multiply"
+  expr2 "((den == 0 ? 0 : (b - parent.old_min) / den) * (parent.new_max - parent.new_min) + parent.new_min) * parent.multiply"
+  expr3 a
+  name Remap_Expr
+  label "range remap + gain"
+  xpos 0
+  ypos -60
+ }
+ Expression {
+  temp_name0 den
+  temp_expr0 "parent.old_max - parent.old_min"
+  expr0 r
+  expr1 g
+  expr2 b
+  expr3 "((den == 0 ? 0 : (a - parent.old_min) / den) * (parent.new_max - parent.new_min) + parent.new_min) * parent.multiply"
+  name Alpha_Remap
+  label "alpha (optional)"
+  disable {{1 - parent.include_alpha}}
+  xpos 0
+  ypos -20
+ }
+ Clamp {
+  minimum {{parent.new_min < parent.new_max ? parent.new_min : parent.new_max}}
+  maximum {{parent.new_min < parent.new_max ? parent.new_max : parent.new_min}}
+  channels rgba
+  name Clamp_Range
+  label "optional clamp"
+  disable {{1 - parent.do_clamp}}
+  xpos 0
+  ypos 20
+ }
+ Output {
+  name Output1
+  xpos 0
+  ypos 80
+ }
+end_group
